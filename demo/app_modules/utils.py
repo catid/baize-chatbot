@@ -333,7 +333,7 @@ def is_stop_word_or_prefix(s: str, stop_words: list) -> bool:
     return False
 
 
-def load_tokenizer_and_model(base_model, adapter_model, load_8bit=False):
+def load_tokenizer_and_model(base_model, adapter_model, load_8bit=True, num_gpus=2):
     if torch.cuda.is_available():
         device = "cuda"
     else:
@@ -346,11 +346,18 @@ def load_tokenizer_and_model(base_model, adapter_model, load_8bit=False):
         pass
     tokenizer = LlamaTokenizer.from_pretrained(base_model)
     if device == "cuda":
+        if num_gpus == 1:
+            kwargs = {}
+        else:
+            kwargs = {
+                "max_memory": {i: "22GiB" for i in range(num_gpus)},
+            }
         model = LlamaForCausalLM.from_pretrained(
             base_model,
             load_in_8bit=load_8bit,
             torch_dtype=torch.float16,
             device_map="auto",
+            **kwargs,
         )
         model = PeftModel.from_pretrained(
             model,
